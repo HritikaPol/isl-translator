@@ -3,6 +3,22 @@ import sqlite3
 import json
 import re
 from flask_bcrypt import Bcrypt
+import os
+import sqlite3
+
+DB_PATH = "database.db"
+
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    return conn
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
