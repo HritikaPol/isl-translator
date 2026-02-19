@@ -1,0 +1,28 @@
+{
+  "A":"images/A.png","B":"images/B.png","C":"images/C.png","D":"images/D.png",
+  "E":"images/E.png","F":"images/F.png","G":"images/G.png","H":"images/H.png",
+  "I":"images/I.png","J":"images/J.png","K":"images/K.png","L":"images/L.png",
+  "M":"images/M.png","N":"images/N.png","O":"images/O.png","P":"images/P.png",
+  "Q":"images/Q.png","R":"images/R.png","S":"images/S.png","T":"images/T.png",
+  "U":"images/U.png","V":"images/V.png","W":"images/W.png","X":"images/X.png",
+  "Y":"images/Y.png","Z":"images/Z.png",
+
+  "0":"images/0.png","1":"images/1.png","2":"images/2.png","3":"images/3.png",
+  "4":"images/4.png","5":"images/5.png","6":"images/6.png","7":"images/7.png",
+  "8":"images/8.png","9":"images/9.png",
+
+  "अ":"images/अ.png","आ":"images/आ.png","इ":"images/इ.png","ई":"images/ई.png",
+  "उ":"images/उ.png","ऊ":"images/ऊ.png","ए":"images/ए.png","ऐ":"images/ऐ.png",
+  "ओ":"images/ओ.png","औ":"images/औ.png",
+
+  "क":"images/क.png","ख":"images/ख.png","ग":"images/ग.png","घ":"images/घ.png","ङ":"images/ङ.png",
+  "च":"images/च.png","छ":"images/छ.png","ज":"images/ज.png","झ":"images/झ.png","ञ":"images/ञ.png",
+  "ट":"images/ट.png","ठ":"images/ठ.png","ड":"images/ड.png","ढ":"images/ढ.png","ण":"images/ण.png",
+  "त":"images/त.png","थ":"images/थ.png","द":"images/द.png","ध":"images/ध.png","न":"images/न.png",
+  "प":"images/प.png","फ":"images/फ.png","ब":"images/ब.png","भ":"images/भ.png","म":"images/म.png",
+  "य":"images/य.png","र":"images/र.png","ल":"images/ल.png","व":"images/व.png",
+  "श":"images/श.png","ष":"images/ष.png","स":"images/स.png","ह":"images/ह.png",
+  "ळ":"images/ळ.png","क्ष":"images/क्ष.png","ज्ञ":"images/ज्ञ.png"
+}
+
+
