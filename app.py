@@ -12,15 +12,18 @@ bcrypt = Bcrypt(app)
 
 DB_PATH = "database.db"
 
+
 # ---------------- DATABASE ----------------
 def get_db():
-    return sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
 
 def init_db():
     conn = get_db()
     cursor = conn.cursor()
 
-    # Users table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +32,6 @@ def init_db():
         )
     """)
 
-    # Translations table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS translations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,12 +44,15 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Initialize database at startup
+
+# Initialize database
 init_db()
+
 
 # ---------------- LOAD CHARACTER MAP ----------------
 with open("mapping.json", encoding="utf-8") as f:
     char_map = json.load(f)
+
 
 # ---------------- PASSWORD VALIDATION ----------------
 def validate_password(password):
@@ -69,6 +74,7 @@ def validate_password(password):
 
     return None
 
+
 # ---------------- HOME ----------------
 @app.route("/")
 def home():
@@ -76,11 +82,12 @@ def home():
         return redirect(url_for("index"))
     return redirect(url_for("login"))
 
+
 # ---------------- SIGNUP ----------------
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
-        username = request.form["username"]
+        username = request.form["username"].strip()
         password = request.form["password"]
 
         error = validate_password(password)
@@ -114,11 +121,12 @@ def signup():
 
     return render_template("signup.html")
 
+
 # ---------------- LOGIN ----------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form["username"]
+        username = request.form["username"].strip()
         password = request.form["password"]
 
         conn = get_db()
@@ -127,7 +135,7 @@ def login():
         result = cursor.fetchone()
         conn.close()
 
-        if result and bcrypt.check_password_hash(result[0], password):
+        if result and bcrypt.check_password_hash(result["password"], password):
             session["user"] = username
             return redirect(url_for("index"))
 
@@ -135,6 +143,7 @@ def login():
         return redirect(url_for("login"))
 
     return render_template("login.html")
+
 
 # ---------------- INDEX ----------------
 @app.route("/index", methods=["GET", "POST"])
@@ -152,7 +161,6 @@ def index():
     if request.method == "POST":
         text = request.form.get("text_input", "")
 
-        # Warning for lowercase
         if any(c.isalpha() and c.islower() for c in text):
             warning = "⚠ Please type English letters in ALL CAPS."
 
@@ -181,6 +189,7 @@ def index():
         user=session["user"]
     )
 
+
 # ---------------- DASHBOARD ----------------
 @app.route("/dashboard")
 def dashboard():
@@ -190,15 +199,15 @@ def dashboard():
     conn = get_db()
     cursor = conn.cursor()
 
-    # Total translations
-    cursor.execute("SELECT COUNT(*) FROM translations")
-    total = cursor.fetchone()[0]
+    # ---------------- TOTAL TRANSLATIONS ----------------
+    cursor.execute("SELECT COUNT(*) as total FROM translations")
+    total = cursor.fetchone()["total"]
 
-    # Unique users
-    cursor.execute("SELECT COUNT(DISTINCT username) FROM translations")
-    unique_users = cursor.fetchone()[0]
+    # ---------------- UNIQUE USERS ----------------
+    cursor.execute("SELECT COUNT(DISTINCT username) as unique_users FROM translations")
+    unique_users = cursor.fetchone()["unique_users"]
 
-    # Top 5 users
+    # ---------------- TOP USERS ----------------
     cursor.execute("""
         SELECT username, COUNT(*) as count
         FROM translations
@@ -206,30 +215,46 @@ def dashboard():
         ORDER BY count DESC
         LIMIT 5
     """)
-    top_users = cursor.fetchall()
+    top_users_raw = cursor.fetchall()
+    top_users = [(row["username"], row["count"]) for row in top_users_raw]
 
-    # Daily trend
+    # ---------------- DAILY TREND ----------------
     cursor.execute("""
-        SELECT DATE(timestamp), COUNT(*)
+        SELECT DATE(timestamp) as day, COUNT(*) as count
         FROM translations
-        GROUP BY DATE(timestamp)
-        ORDER BY DATE(timestamp)
+        GROUP BY day
+        ORDER BY day
     """)
-    daily_data = cursor.fetchall()
+    daily_raw = cursor.fetchall()
+    daily_data = [(row["day"], row["count"]) for row in daily_raw]
 
-    # Character frequency
+    # ---------------- CHARACTER FREQUENCY ----------------
     cursor.execute("SELECT input_text FROM translations")
     texts = cursor.fetchall()
-
     conn.close()
 
     all_chars = ""
+
     for row in texts:
-        all_chars += row[0].replace(" ", "")  # remove spaces
+        # Keep original characters (no forced uppercase)
+        all_chars += row["input_text"]
 
-    char_counts = Counter(all_chars.upper())
-    top_chars = dict(char_counts.most_common(6))
+    from collections import Counter
+    char_counts = Counter(all_chars)
 
+    # Remove spaces and clean
+    filtered_counts = {
+        char: count
+        for char, count in char_counts.items()
+        if char.strip() != ""
+    }
+
+    # Top 15 characters (includes Marathi + numbers)
+    top_chars = dict(
+        sorted(filtered_counts.items(), key=lambda x: x[1], reverse=True)[:15]
+    )
+
+    # ---------------- AVERAGE ----------------
     avg_per_user = round(total / unique_users, 2) if unique_users > 0 else 0
 
     return render_template(
@@ -247,6 +272,7 @@ def dashboard():
 def logout():
     session.pop("user", None)
     return redirect(url_for("login"))
+
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
