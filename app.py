@@ -3,13 +3,24 @@ import sqlite3
 import json
 import re
 from flask_bcrypt import Bcrypt
-import os
-import sqlite3
+from collections import Counter
+
+# ---------------- APP SETUP ----------------
+app = Flask(__name__)
+app.secret_key = "supersecretkey"
+bcrypt = Bcrypt(app)
+
+DB_PATH = "database.db"
+
+# ---------------- DATABASE ----------------
+def get_db():
+    return sqlite3.connect(DB_PATH)
 
 def init_db():
-    conn = sqlite3.connect("database.db")
+    conn = get_db()
     cursor = conn.cursor()
 
+    # Users table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,6 +29,7 @@ def init_db():
         )
     """)
 
+    # Translations table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS translations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,54 +41,33 @@ def init_db():
 
     conn.commit()
     conn.close()
-    
-DB_PATH = "database.db"
 
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
-        )
-    """)
-    conn.commit()
-    return conn
+# Initialize database at startup
+init_db()
 
-app = Flask(__name__)
-app.secret_key = "supersecretkey"
-bcrypt = Bcrypt(app)
-
-# Load ISL mapping
+# ---------------- LOAD CHARACTER MAP ----------------
 with open("mapping.json", encoding="utf-8") as f:
     char_map = json.load(f)
-
-
-def get_db():
-    return sqlite3.connect("database.db")
-
 
 # ---------------- PASSWORD VALIDATION ----------------
 def validate_password(password):
     if len(password) < 8:
-        return "Too short! Minimum 8 characters 😅"
+        return "Minimum 8 characters required 😅"
 
     letters = len(re.findall(r"[A-Za-z]", password))
     numbers = len(re.findall(r"[0-9]", password))
     special = len(re.findall(r"[!@#$%^&*(),.?\":{}|<>]", password))
 
     if letters < 4:
-        return "We need at least 4 letters 🔤"
+        return "At least 4 letters required 🔤"
 
     if numbers < 3:
         return "Add at least 3 numbers 🔢"
 
     if special < 1:
-        return "Don't forget 1 special character ✨"
+        return "Include at least 1 special character ✨"
 
     return None
-
 
 # ---------------- HOME ----------------
 @app.route("/")
@@ -85,7 +76,6 @@ def home():
         return redirect(url_for("index"))
     return redirect(url_for("login"))
 
-
 # ---------------- SIGNUP ----------------
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
@@ -93,7 +83,6 @@ def signup():
         username = request.form["username"]
         password = request.form["password"]
 
-        # validate password
         error = validate_password(password)
         if error:
             flash(error, "error")
@@ -104,12 +93,10 @@ def signup():
         try:
             conn = get_db()
             cursor = conn.cursor()
-
             cursor.execute(
                 "INSERT INTO users (username, password) VALUES (?, ?)",
                 (username, hashed_pw),
             )
-
             conn.commit()
             conn.close()
 
@@ -117,18 +104,15 @@ def signup():
             return redirect(url_for("login"))
 
         except sqlite3.IntegrityError:
-            # REAL duplicate username case
-            flash("Oops! That username is already taken 🚫", "error")
+            flash("Username already exists 🚫", "error")
             return redirect(url_for("signup"))
 
         except Exception as e:
-            # show real hidden error in terminal
             print("DATABASE ERROR:", e)
-            flash("Database error occurred. Check terminal.", "error")
+            flash("Database error occurred.", "error")
             return redirect(url_for("signup"))
 
     return render_template("signup.html")
-
 
 # ---------------- LOGIN ----------------
 @app.route("/login", methods=["GET", "POST"])
@@ -147,11 +131,10 @@ def login():
             session["user"] = username
             return redirect(url_for("index"))
 
-        flash("Hmm... those credentials don't look right 🤔", "error")
+        flash("Invalid credentials 🤔", "error")
         return redirect(url_for("login"))
 
     return render_template("login.html")
-
 
 # ---------------- INDEX ----------------
 @app.route("/index", methods=["GET", "POST"])
@@ -169,6 +152,7 @@ def index():
     if request.method == "POST":
         text = request.form.get("text_input", "")
 
+        # Warning for lowercase
         if any(c.isalpha() and c.islower() for c in text):
             warning = "⚠ Please type English letters in ALL CAPS."
 
@@ -179,8 +163,8 @@ def index():
         if text.strip():
             session["count"] += 1
 
-            conn=get_db()
-            cursor=conn.cursor()    
+            conn = get_db()
+            cursor = conn.cursor()
             cursor.execute(
                 "INSERT INTO translations (username, input_text) VALUES (?, ?)",
                 (session["user"], text)
@@ -196,8 +180,8 @@ def index():
         count=session["count"],
         user=session["user"]
     )
-#------------------------ DASHBOARD ----------------
 
+# ---------------- DASHBOARD ----------------
 @app.route("/dashboard")
 def dashboard():
     if "user" not in session:
@@ -239,10 +223,9 @@ def dashboard():
 
     conn.close()
 
-    from collections import Counter
     all_chars = ""
     for row in texts:
-        all_chars += row[0]
+        all_chars += row[0].replace(" ", "")  # remove spaces
 
     char_counts = Counter(all_chars.upper())
     top_chars = dict(char_counts.most_common(6))
@@ -265,8 +248,6 @@ def logout():
     session.pop("user", None)
     return redirect(url_for("login"))
 
-
-init_db()
-
+# ---------------- RUN ----------------
 if __name__ == "__main__":
     app.run(debug=True)
