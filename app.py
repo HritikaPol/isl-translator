@@ -9,6 +9,7 @@ import sqlite3
 def init_db():
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -16,9 +17,19 @@ def init_db():
             password TEXT NOT NULL
         )
     """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS translations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            input_text TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     conn.commit()
     conn.close()
-
+    
 DB_PATH = "database.db"
 
 def get_db():
@@ -168,6 +179,15 @@ def index():
         if text.strip():
             session["count"] += 1
 
+            conn=get_db()
+            cursor=conn.cursor()    
+            cursor.execute(
+                "INSERT INTO translations (username, input_text) VALUES (?, ?)",
+                (session["user"], text)
+            )
+            conn.commit()
+            conn.close()
+
     return render_template(
         "index.html",
         text=text,
@@ -175,6 +195,46 @@ def index():
         warning=warning,
         count=session["count"],
         user=session["user"]
+    )
+#------------------------ DASHBOARD ----------------
+
+@app.route("/dashboard")
+def dashboard():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Total translations
+    cursor.execute("SELECT COUNT(*) FROM translations")
+    total_translations = cursor.fetchone()[0]
+
+    # Most active user
+    cursor.execute("""
+        SELECT username, COUNT(*) as count
+        FROM translations
+        GROUP BY username
+        ORDER BY count DESC
+        LIMIT 1
+    """)
+    top_user = cursor.fetchone()
+
+    # Daily trend
+    cursor.execute("""
+        SELECT DATE(timestamp), COUNT(*)
+        FROM translations
+        GROUP BY DATE(timestamp)
+    """)
+    daily_data = cursor.fetchall()
+
+    conn.close()
+
+    return render_template(
+        "dashboard.html",
+        total=total_translations,
+        top_user=top_user,
+        daily_data=daily_data
     )
 
 
