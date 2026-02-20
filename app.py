@@ -6,6 +6,19 @@ from flask_bcrypt import Bcrypt
 import os
 import sqlite3
 
+def init_db():
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
 DB_PATH = "database.db"
 
 def get_db():
@@ -172,6 +185,7 @@ def logout():
     return redirect(url_for("login"))
 
 
-if __name__ == "__main__":
-    app.run()
+init_db()
 
+if __name__ == "__main__":
+    app.run(debug=True)
