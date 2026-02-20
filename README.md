@@ -121,6 +121,9 @@ python app.py
 ### Login Page
 ![Login](static/screenshots/login.png)
 
+### SignUp Page
+![Signup](static/screenshots/signup.png)
+
 ### Translation Interface
 ![Translator](static/screenshots/translator.png)
 
