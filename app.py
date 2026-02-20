@@ -208,35 +208,56 @@ def dashboard():
 
     # Total translations
     cursor.execute("SELECT COUNT(*) FROM translations")
-    total_translations = cursor.fetchone()[0]
+    total = cursor.fetchone()[0]
 
-    # Most active user
+    # Unique users
+    cursor.execute("SELECT COUNT(DISTINCT username) FROM translations")
+    unique_users = cursor.fetchone()[0]
+
+    # Top 5 users
     cursor.execute("""
         SELECT username, COUNT(*) as count
         FROM translations
         GROUP BY username
         ORDER BY count DESC
-        LIMIT 1
+        LIMIT 5
     """)
-    top_user = cursor.fetchone()
+    top_users = cursor.fetchall()
 
     # Daily trend
     cursor.execute("""
         SELECT DATE(timestamp), COUNT(*)
         FROM translations
         GROUP BY DATE(timestamp)
+        ORDER BY DATE(timestamp)
     """)
     daily_data = cursor.fetchall()
 
+    # Character frequency
+    cursor.execute("SELECT input_text FROM translations")
+    texts = cursor.fetchall()
+
     conn.close()
+
+    from collections import Counter
+    all_chars = ""
+    for row in texts:
+        all_chars += row[0]
+
+    char_counts = Counter(all_chars.upper())
+    top_chars = dict(char_counts.most_common(6))
+
+    avg_per_user = round(total / unique_users, 2) if unique_users > 0 else 0
 
     return render_template(
         "dashboard.html",
-        total=total_translations,
-        top_user=top_user,
-        daily_data=daily_data
+        total=total,
+        unique_users=unique_users,
+        avg_per_user=avg_per_user,
+        top_users=top_users,
+        daily_data=daily_data,
+        top_chars=top_chars
     )
-
 
 # ---------------- LOGOUT ----------------
 @app.route("/logout")

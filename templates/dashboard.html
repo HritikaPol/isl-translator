@@ -4,62 +4,146 @@
     <title>Analytics Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg,#1d2b64,#f8cdda);
+            min-height:100vh;
+            color:white;
+        }
+
+        .card-style {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(12px);
+            border-radius:18px;
+            padding:20px;
+            transition: transform 0.3s ease;
+        }
+
+        .card-style:hover {
+            transform: translateY(-5px);
+        }
+
+        canvas {
+            background: rgba(255,255,255,0.9);
+            border-radius:12px;
+            padding:10px;
+        }
+    </style>
 </head>
 
-<body class="bg-light">
+<body>
 
 <div class="container py-5">
 
-    <h2 class="mb-4">Translation Analytics Dashboard</h2>
+    <h2 class="mb-4">📊 Translation Analytics Dashboard</h2>
 
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card p-4 shadow">
+    <!-- KPI ROW -->
+    <div class="row g-4 mb-4">
+
+        <div class="col-md-3">
+            <div class="card-style text-center">
                 <h5>Total Translations</h5>
                 <h2>{{ total }}</h2>
             </div>
         </div>
 
-        <div class="col-md-6">
-            <div class="card p-4 shadow">
-                <h5>Most Active User</h5>
-                {% if top_user %}
-                    <h4>{{ top_user[0] }}</h4>
-                    <p>{{ top_user[1] }} translations</p>
+        <div class="col-md-3">
+            <div class="card-style text-center">
+                <h5>Unique Users</h5>
+                <h2>{{ unique_users }}</h2>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card-style text-center">
+                <h5>Avg / User</h5>
+                <h2>{{ avg_per_user }}</h2>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card-style text-center">
+                <h5>Top User</h5>
+                {% if top_users %}
+                    <h6>{{ top_users[0][0] }}</h6>
                 {% else %}
-                    <p>No data yet</p>
+                    <p>No Data</p>
                 {% endif %}
             </div>
         </div>
+
     </div>
 
-    <div class="card p-4 shadow">
-        <h5>Daily Translation Trend</h5>
-        <canvas id="trendChart"></canvas>
+    <!-- CHART ROW -->
+    <div class="row g-4">
+
+        <div class="col-lg-6">
+            <div class="card-style">
+                <h5>Daily Trend</h5>
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card-style">
+                <h5>Top Users</h5>
+                <canvas id="userChart"></canvas>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mt-4">
+            <div class="card-style">
+                <h5>Character Frequency</h5>
+                <canvas id="charChart"></canvas>
+            </div>
+        </div>
+
     </div>
 
 </div>
 
 <script>
-    const data = {{ daily_data|tojson }};
+const dailyData = {{ daily_data|tojson }};
+const topUsers = {{ top_users|tojson }};
+const topChars = {{ top_chars|tojson }};
 
-    const labels = data.map(row => row[0]);
-    const counts = data.map(row => row[1]);
+// Daily Trend
+new Chart(document.getElementById("trendChart"), {
+    type: 'line',
+    data: {
+        labels: dailyData.map(row => row[0]),
+        datasets: [{
+            label: 'Translations',
+            data: dailyData.map(row => row[1]),
+            borderWidth: 2,
+            tension: 0.3
+        }]
+    }
+});
 
-    const ctx = document.getElementById('trendChart');
+// Top Users
+new Chart(document.getElementById("userChart"), {
+    type: 'bar',
+    data: {
+        labels: topUsers.map(row => row[0]),
+        datasets: [{
+            label: 'Translations',
+            data: topUsers.map(row => row[1])
+        }]
+    }
+});
 
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Translations per Day',
-                data: counts,
-                borderWidth: 2,
-                fill: false
-            }]
-        }
-    });
+// Character Frequency
+new Chart(document.getElementById("charChart"), {
+    type: 'doughnut',
+    data: {
+        labels: Object.keys(topChars),
+        datasets: [{
+            data: Object.values(topChars)
+        }]
+    }
+});
 </script>
 
 </body>
